@@ -24,7 +24,7 @@
 # ── redflagbingo.fun ───────────────────────────────────────────────────
 redflagbingo.fun {
 	import security_headers
-	encode zstd br gzip
+	encode zstd gzip
 	reverse_proxy rfb_app:80 {
 		# Préserve les infos d'origine pour Symfony/FrankenPHP
 		header_up X-Real-IP {remote_host}
