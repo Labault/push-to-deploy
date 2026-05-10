@@ -33,4 +33,13 @@ redflagbingo.fun {
 	}
 }
 
-# (Bloc moodtracker.labault.dev sera ajouté en Sprint 5 plus tard)
+# ── moodtracker.labault.dev ────────────────────────────────────────────
+moodtracker.labault.dev {
+	import security_headers
+	encode zstd gzip
+	reverse_proxy mt_app:80 {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up Host {host}
+	}
+}
