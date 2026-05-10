@@ -1,0 +1,36 @@
+{
+	# Email pour Let's Encrypt (renouvellement automatique)
+	email {$LETSENCRYPT_EMAIL}
+}
+
+# ── Snippet headers de sécurité globaux ────────────────────────────────
+(security_headers) {
+	header {
+		# HSTS 1 an, inclut sous-domaines, preload-ready
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		# Anti MIME-sniffing
+		X-Content-Type-Options "nosniff"
+		# Anti-clickjacking
+		X-Frame-Options "SAMEORIGIN"
+		# Referrer policy raisonnable
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Permissions policy minimaliste (pas de mic/camera/geoloc par défaut)
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		# Masque la stack
+		-Server
+	}
+}
+
+# ── redflagbingo.fun ───────────────────────────────────────────────────
+redflagbingo.fun {
+	import security_headers
+	encode zstd br gzip
+	reverse_proxy rfb_app:80 {
+		# Préserve les infos d'origine pour Symfony/FrankenPHP
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up Host {host}
+	}
+}
+
+# (Bloc moodtracker.labault.dev sera ajouté en Sprint 5 plus tard)
