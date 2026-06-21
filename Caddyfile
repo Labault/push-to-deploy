@@ -33,13 +33,76 @@ redflagbingo.fun {
 	}
 }
 
-# ── moodtracker.labault.dev ────────────────────────────────────────────
-moodtracker.labault.dev {
-	import security_headers
-	encode zstd gzip
-	reverse_proxy mt_app:80 {
-		header_up X-Real-IP {remote_host}
-		header_up X-Forwarded-Proto {scheme}
-		header_up Host {host}
-	}
+ ── humelis.labault.dev ────────────────────────────────────────────
+humelis.labault.dev {
+        import security_headers
+        encode zstd gzip
+        reverse_proxy humelis_app:80 {
+                header_up X-Real-IP {remote_host}
+                header_up X-Forwarded-Proto {scheme}
+                header_up Host {host}
+        }
+}
+
+# ── labault.dev ────────────────────────────────────────────
+labault.dev {
+    root * /srv/portfolio
+    file_server
+
+    # Compression gzip/brotli (perf sur le HTML lourd)
+    encode gzip
+
+    # Cache navigateur (optionnel, utile pour les fonts Google)
+    header /index.html Cache-Control "no-cache, must-revalidate"
+}
+
+# Redirection www → non-www
+www.labault.dev {
+    redir https://labault.dev{uri} permanent
+}
+
+# ── hush.labault.dev ────────────────────────────────────────────
+hush.labault.dev {
+    encode gzip zstd
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "geolocation=(), camera=(), microphone=()"
+        -Server
+    }
+
+    reverse_proxy hush-web-prod:80 {
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up Host {host}
+    }
+
+    log {
+        output file /var/log/caddy/hush.log {
+            roll_size 10mb
+            roll_keep 5
+        }
+        format console
+    }
+}
+
+# ── devspeak.labault.dev ────────────────────────────────────────────
+devspeak.labault.dev {
+    reverse_proxy devspeak:4321
+    encode gzip zstd
+    header {
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+}
+
+# ── lolv.labault.dev ────────────────────────────────────────────
+lolv.labault.dev {
+    import security_headers
+    reverse_proxy lolv_wp_prod:80
 }
