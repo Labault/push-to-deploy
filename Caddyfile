@@ -33,7 +33,7 @@ redflagbingo.fun {
 	}
 }
 
- ── humelis.labault.dev ────────────────────────────────────────────
+# ── humelis.labault.dev ────────────────────────────────────────────
 humelis.labault.dev {
         import security_headers
         encode zstd gzip
@@ -105,4 +105,10 @@ devspeak.labault.dev {
 lolv.labault.dev {
     import security_headers
     reverse_proxy lolv_wp_prod:80
+}
+
+# ── deploy.labault.dev (listener de déploiement) ─────────────────────
+deploy.labault.dev {
+    import security_headers
+    reverse_proxy webhook:9000
 }

@@ -16,6 +16,22 @@ services:
     networks:
       - web
 
+  # Listener de déploiement : reçoit les webhooks GitHub (via Caddy sur
+  # deploy.labault.dev) et lance le deploy.sh du projet concerné.
+  webhook:
+    build: ./deploy/webhook
+    container_name: proxy_webhook
+    restart: unless-stopped
+    environment:
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock  # pilote le démon Docker hôte
+      - /srv:/srv                                   # accès aux clones des projets
+      - ./deploy:/deploy                            # hooks.json, dispatch.sh, logs
+      - ${DEPLOYER_SSH_KEY}:/keys/deployer:ro       # clé deployer UNIQUE (git pull)
+    networks:
+      - web
+
 networks:
   web:
     external: true

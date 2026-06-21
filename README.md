@@ -39,3 +39,9 @@ mon-projet.example.com {
     reverse_proxy mon_service:80
 }
 4. Recharger Caddy : `docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile`
+
+## Déploiement automatique
+
+Le proxy héberge aussi le **listener de déploiement** : un push sur `main`
+déclenche un webhook GitHub qui rebuild et redémarre le projet concerné, de
+façon uniforme quelle que soit la stack. Voir [`deploy/README.md`](deploy/README.md).

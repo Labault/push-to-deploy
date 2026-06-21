@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────────────────────
+# CONTRAT DE DÉPLOIEMENT STANDARD — identique sur tous les projets.
+#
+# À copier à la racine de chaque repo sous le nom `deploy.sh`, puis adapter
+# UNIQUEMENT le bloc "ÉTAPES SPÉCIFIQUES PROJET" si nécessaire (migrations,
+# build assets, warmup cache…). Le reste ne change pas : c'est ce qui rend
+# le déploiement uniforme malgré des stacks différentes.
+#
+# Hypothèses :
+#   - le code est déjà au bon commit (le dispatcher webhook a fait le git pull)
+#   - un docker-compose.yml est présent et le service rejoint le réseau `web`
+#   - lançable aussi à la main : `./deploy.sh` après un `git pull`
+#
+# Config optionnelle via un fichier `.deploy.env` (non versionné) :
+#   HEALTHCHECK_URL=https://monprojet.labault.dev/health
+# ─────────────────────────────────────────────────────────────────────────
+set -euo pipefail
+cd "$(dirname "$0")"
+
+PROJECT="$(basename "$(pwd)")"
+log() { echo "[$(date '+%H:%M:%S')] [$PROJECT] $*"; }
+
+[ -f .deploy.env ] && { set -a; . ./.deploy.env; set +a; }
+
+log "Build des images…"
+docker compose build
+
+# ── ÉTAPES SPÉCIFIQUES PROJET (à décommenter/adapter selon la stack) ──────
+# Symfony / FrankenPHP :
+#   docker compose run --rm app php bin/console doctrine:migrations:migrate -n
+# Node / Astro (si build hors image) :
+#   docker compose run --rm app npm ci && docker compose run --rm app npm run build
+# WordPress : en général rien (volumes persistants)
+# ──────────────────────────────────────────────────────────────────────────
+
+log "(Re)démarrage des conteneurs…"
+docker compose up -d --remove-orphans
+
+log "Nettoyage des images orphelines…"
+docker image prune -f >/dev/null 2>&1 || true
+
+# ── Healthcheck optionnel (échec = code retour non nul, visible dans les logs)
+if [ -n "${HEALTHCHECK_URL:-}" ]; then
+  log "Healthcheck → $HEALTHCHECK_URL"
+  for i in $(seq 1 10); do
+    if curl -fsS -o /dev/null "$HEALTHCHECK_URL"; then
+      log "Healthy ✓"; exit 0
+    fi
+    sleep 3
+  done
+  log "Healthcheck ÉCHEC ✗ (le conteneur tourne peut-être quand même)"
+  exit 1
+fi
+
+log "Déploiement terminé ✓"
