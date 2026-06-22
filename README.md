@@ -137,5 +137,5 @@ push-to-deploy/
 `dispatch.sh` est volontairement **déterministe** (rails). Le jugement (diagnostic d'échec,
 revue de risque, audit) est délégué à des **agents en lecture seule** qui n'exécutent rien
 et ouvrent des issues — voir [`ops/README.md`](ops/README.md). Roadmap de durcissement :
-compte machine GitHub + clés lecture seule, socket-proxy Docker, sauvegarde distante (B2/S3),
+socket-proxy Docker, sauvegarde distante (B2/S3),
 limites de ressources persistées, IaC.

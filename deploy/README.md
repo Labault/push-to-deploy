@@ -19,7 +19,7 @@ deploy/dispatch.sh   (résout repo → dossier, git pull, lance deploy.sh)
 
 Trois piliers :
 
-1. **Une seule clé deployer** (compte machine GitHub) qui pull tous les repos.
+1. **Une deploy key read-only par repo** (le webhook ne fait que lire — aucune écriture possible).
 2. **Un contrat `deploy.sh` identique** dans chaque projet (interface uniforme,
    implémentation libre).
 3. **Un listener webhook unique** dans `push-to-deploy`, exposé sur
