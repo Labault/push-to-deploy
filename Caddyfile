@@ -46,6 +46,7 @@ humelis.labault.dev {
 
 # ── labault.dev ────────────────────────────────────────────
 labault.dev {
+    import security_headers
     root * /srv/portfolio
     file_server
 
@@ -95,9 +96,11 @@ devspeak.labault.dev {
     reverse_proxy devspeak:4321
     encode gzip zstd
     header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
         X-Frame-Options "SAMEORIGIN"
         X-Content-Type-Options "nosniff"
         Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
     }
 }
 
