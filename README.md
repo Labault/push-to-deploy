@@ -86,7 +86,7 @@ docker network create web
 # 2. Cloner et configurer
 git clone git@github.com:<owner>/push-to-deploy.git ~/push-to-deploy
 cd ~/push-to-deploy
-cp .env.exemple .env          # éditer : LETSENCRYPT_EMAIL, WEBHOOK_SECRET, DEPLOYER_SSH_KEY
+cp .env.exemple .env          # éditer : LETSENCRYPT_EMAIL, WEBHOOK_SECRET
 
 # 3. Démarrer le proxy + le listener de déploiement
 docker compose up -d
@@ -118,6 +118,18 @@ push-to-deploy/
     ├── deploy-watch.sh    #   diagnostic d'échec de déploiement -> issue GitHub
     └── lib.sh             #   helpers partagés
 ```
+
+---
+
+## Stack & versions
+
+| Composant | Version | Source |
+|---|---|---|
+| Caddy | `2-alpine` | image officielle |
+| adnanh/webhook | `2.8.2` | [`deploy/webhook/Dockerfile`](deploy/webhook/Dockerfile) |
+| Docker Compose (plugin du listener) | `v2.29.7` | idem |
+| Image de base du listener | `docker:27-cli` | idem |
+| Outils ops (`restic` / `gh` / `claude`) | `0.19.0` / `2.95.0` / `2.1.185` | [`ops/README.md`](ops/README.md) |
 
 ---
 
