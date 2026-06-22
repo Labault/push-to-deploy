@@ -29,22 +29,29 @@ Trois piliers :
 
 ## 1. Setup initial (une seule fois)
 
-### a. Clé SSH de déploiement
+### a. Clés de déploiement (read-only, une par repo)
 
-Le webhook fait un `git pull` : il lui faut une **clé SSH sans passphrase** ayant
-**accès en lecture** aux repos. Son chemin absolu est pointé par `DEPLOYER_SSH_KEY`
-dans `.env`, et la clé est montée en lecture seule dans le conteneur.
+Le webhook ne fait que `git pull` → il n'a besoin que de **lecture**. Le modèle
+retenu : **une *deploy key* GitHub en lecture seule par repo**, générée sans
+passphrase, stockée dans `deploy/keys/<repo>.key` (gitignoré) et montée en lecture
+seule dans le conteneur sous `/keys`. `dispatch.sh` choisit la bonne clé d'après le
+nom du repo (`/keys/<repo-en-minuscules>.key`).
+
+> **Pourquoi par repo et read-only ?** Une *deploy key* GitHub est unique à un repo
+> et peut être limitée à la lecture. Résultat : compromettre le webhook ne donne
+> que la **lecture d'un seul repo** — jamais d'écriture, jamais accès aux autres.
+> C'est plus sûr qu'une clé personnelle (write sur tout) ou qu'une clé de compte
+> machine partagée.
+
+Génération + ajout en read-only (via [`gh`](https://cli.github.com), authentifié) :
 
 ```bash
-# Générer une clé dédiée au déploiement (sans passphrase, pour usage non-interactif)
-ssh-keygen -t ed25519 -C "deployer" -f ~/.ssh/deployer -N ""
-cat ~/.ssh/deployer.pub   # → à autoriser sur GitHub
+mkdir -p deploy/keys && chmod 700 deploy/keys
+NAME=monrepo ; REPO=owner/MonRepo            # NAME = basename en minuscules
+ssh-keygen -t ed25519 -N "" -C "vps-webhook-ro-$NAME" -f deploy/keys/$NAME.key
+gh repo deploy-key add deploy/keys/$NAME.key.pub -R "$REPO" --title vps-webhook-ro
+#   (read-only par défaut ; surtout PAS --allow-write)
 ```
-
-> **Recommandé (durcissement)** : plutôt qu'une clé personnelle (qui a un accès en
-> écriture à tous tes repos), utilise un **compte machine GitHub dédié** avec des
-> **deploy keys en lecture seule** — le webhook n'a besoin que de *lire*. Cela réduit
-> fortement le rayon de souffle en cas de compromission du listener.
 
 ### b. Variables d'environnement
 
@@ -54,7 +61,6 @@ cp .env.exemple .env   # si pas déjà fait
 # Édite .env :
 #   LETSENCRYPT_EMAIL=<ton email>
 #   WEBHOOK_SECRET=<openssl rand -hex 32>
-#   DEPLOYER_SSH_KEY=<chemin absolu de la clé privée, ex. /home/<user>/.ssh/deployer>
 ```
 
 ### c. Démarrer le listener
@@ -81,6 +87,13 @@ Pour chaque projet à passer en déploiement auto :
    ```
    > À chaque déploiement, `dispatch.sh` fait un `git reset --hard origin/main` puis
    > `chown` du clone vers l'utilisateur applicatif (propriété stable, pas de mélange root).
+
+   Puis génère sa **deploy key read-only** (cf. §1.a) :
+   ```bash
+   N=$(basename "<repo>" | tr 'A-Z' 'a-z')
+   ssh-keygen -t ed25519 -N "" -C "vps-webhook-ro-$N" -f ~/proxy-global/deploy/keys/$N.key
+   gh repo deploy-key add ~/proxy-global/deploy/keys/$N.key.pub -R "<owner>/<repo>" --title vps-webhook-ro
+   ```
 
 2. **Ajouter le contrat de déploiement** au repo :
    ```bash

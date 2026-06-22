@@ -28,7 +28,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock  # pilote le démon Docker hôte
       - /srv:/srv                                   # accès aux clones des projets
       - ./deploy:/deploy                            # hooks.json, dispatch.sh, logs
-      - ${DEPLOYER_SSH_KEY}:/keys/deployer:ro       # clé deployer UNIQUE (git pull)
+      - ./deploy/keys:/keys:ro                      # clés de déploiement READ-ONLY (une par repo)
     networks:
       - web
 

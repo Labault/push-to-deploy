@@ -34,8 +34,15 @@ fi
 
 LOG="$LOGDIR/$(basename "$REPO").log"
 
-# Clé deployer unique, montée en lecture seule dans le conteneur
-export GIT_SSH_COMMAND="ssh -i /keys/deployer -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+# Clé de déploiement LECTURE SEULE, dédiée à CE repo (une clé par projet, montées
+# dans /keys). Compromission du webhook => lecture d'un seul repo, pas d'écriture.
+KEYNAME="$(basename "$REPO" | tr '[:upper:]' '[:lower:]')"
+KEYFILE="/keys/${KEYNAME}.key"
+if [ ! -f "$KEYFILE" ]; then
+  echo "dispatch: aucune clé de déploiement pour $REPO (attendu $KEYFILE)" >&2
+  exit 4
+fi
+export GIT_SSH_COMMAND="ssh -i $KEYFILE -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
 
 # Déploiement détaché (survit à la fin de la requête webhook)
 setsid bash -c '

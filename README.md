@@ -64,11 +64,15 @@ Détails complets et procédure d'onboarding d'un nouveau projet : **[`deploy/RE
   par app).
 - **Webhook signé** : seul un `POST` avec une signature HMAC-SHA256 valide (`WEBHOOK_SECRET`)
   **et** un `ref == refs/heads/main` déclenche un déploiement.
+- **Clés de déploiement en lecture seule, une par repo** : le webhook ne fait que `pull`,
+  il porte donc des *deploy keys* GitHub **read-only** dédiées (dans `deploy/keys/`, montées
+  sous `/keys`). Une clé compromise ne donne que la **lecture d'un seul repo** — pas d'écriture,
+  pas d'accès aux autres.
 - ⚠️ Le conteneur `webhook` monte le **socket Docker** : il a donc des droits **root** sur
-  l'hôte (nécessaire pour piloter les stacks). C'est le composant le plus sensible — il est
-  protégé par le secret HMAC. Durcissement recommandé : clé de déploiement **lecture seule**
-  via un **compte machine GitHub** dédié, *socket-proxy* Docker, allowlist des IP GitHub.
-- **Secrets hors-git** : `.env` (secret HMAC, email) et la clé privée ne sont **jamais**
+  l'hôte (nécessaire pour piloter les stacks). C'est le composant le plus sensible — protégé
+  par le secret HMAC. Durcissement restant possible : *socket-proxy* Docker, allowlist des IP
+  GitHub au niveau Caddy.
+- **Secrets hors-git** : `.env` (secret HMAC, email) et les clés privées ne sont **jamais**
   committés (`.gitignore`). Les `.env` de prod sont en `chmod 600`.
 
 ---
@@ -100,12 +104,13 @@ Pour brancher un projet sur le déploiement auto : **[`deploy/README.md`](deploy
 proxy-global/
 ├── Caddyfile              # routage + TLS + en-têtes de sécurité (un bloc par site)
 ├── docker-compose.yml     # services caddy + webhook, réseau « web », volumes
-├── .env(.exemple)         # LETSENCRYPT_EMAIL, WEBHOOK_SECRET, DEPLOYER_SSH_KEY (hors-git)
+├── .env(.exemple)         # LETSENCRYPT_EMAIL, WEBHOOK_SECRET (hors-git)
 ├── deploy/                # déploiement continu
 │   ├── dispatch.sh        #   résout repo→dossier, git reset --hard, lance ./deploy.sh
 │   ├── projects.conf      #   table de routage  owner/repo = /srv/<dossier>
 │   ├── hooks.json         #   règles du listener (HMAC + ref==main)
 │   ├── deploy.sh.template #   contrat de déploiement de référence (à copier par projet)
+│   ├── keys/              #   deploy keys read-only, une par repo (hors-git)
 │   └── webhook/           #   image du listener (adnanh/webhook + docker CLI + git)
 └── ops/                   # exploitation (cron) — voir ops/README.md
     ├── backup.sh          #   sauvegarde chiffrée restic (bases + données + tooling)
