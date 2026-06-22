@@ -46,6 +46,9 @@ setsid bash -c '
   git config --global --add safe.directory "'"$DIR"'"
   git fetch --prune origin
   git reset --hard origin/main
+  # Le conteneur tourne en root : on remet les fichiers au propriétaire humain
+  # unique (thibault, UID 1000) pour éviter tout mélange root/deploy.
+  chown -R 1000:1000 "'"$DIR"'"
   chmod +x ./deploy.sh
   ./deploy.sh
   echo "===== $(date "+%F %T") done ====="
