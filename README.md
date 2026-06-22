@@ -1,153 +1,165 @@
 # push-to-deploy
 
-Infrastructure « tout-en-un » qui sert et déploie l'ensemble des applications d'un
-même VPS : **reverse-proxy TLS partagé (Caddy)** + **déploiement continu par webhook**
-+ **tooling d'exploitation** (sauvegardes chiffrées, monitoring uptime, diagnostic
-d'incident assisté par IA). Un seul petit dépôt pilote tout le serveur.
+An all-in-one infrastructure repo that **serves and deploys every app on a single
+VPS**: a **shared TLS reverse proxy (Caddy)** + **webhook-driven continuous
+deployment** + **operations tooling** (encrypted backups, uptime monitoring,
+AI-assisted incident diagnosis). One small repo drives the whole server.
 
-> Pensé pour un VPS mono-serveur hébergeant plusieurs apps hétérogènes (Symfony/FrankenPHP,
-> Astro, Node, WordPress, sites statiques) derrière un proxy unique, avec un déploiement
-> identique quelle que soit la stack.
+> Built for a single-VPS box hosting several heterogeneous apps
+> (Symfony/FrankenPHP, Astro, Node, WordPress, static sites) behind one proxy,
+> with an identical deploy flow regardless of the stack.
+
+**Running in production** on my own VPS — it's what serves
+[Hush](https://hush.labault.dev), [Red Flag Bingo](https://redflagbingo.fun) and
+other projects. Not a demo: this is the real deployment pipeline behind my apps.
 
 ---
 
-## Vue d'ensemble
+## Overview
 
 ```
                     Internet
-                       │ 80/443 (TLS auto Let's Encrypt)
+                       │ 80/443 (auto TLS, Let's Encrypt)
                        ▼
         ┌──────────────────────────────┐
-        │   Caddy (proxy_caddy)         │  reverse-proxy + HTTPS + en-têtes sécurité
-        │   *.exemple.dev, exemple.dev  │
+        │   Caddy (proxy_caddy)         │  reverse proxy + HTTPS + security headers
+        │   *.example.dev, example.dev  │
         └───────┬───────────────┬───────┘
-                │ réseau docker  │
-                │    « web »     │
+                │ docker network │
+                │     « web »    │
      ┌──────────┴───┐      ┌─────┴───────────────────────────┐
-     │  apps         │      │  deploy.exemple.dev             │
-     │  (conteneurs) │      │     ▼                           │
-     │  Symfony,     │      │  webhook (proxy_webhook)        │ ← listener CD
-     │  Astro, WP… │      │     ▼ dispatch.sh               │
+     │  apps         │      │  deploy.example.dev             │
+     │  (containers) │      │     ▼                           │
+     │  Symfony,     │      │  webhook (proxy_webhook)        │ ← CD listener
+     │  Astro, WP…   │      │     ▼ dispatch.sh               │
      └───────────────┘      │  git pull + ./deploy.sh         │
                             └─────────────────────────────────┘
 
-Déploiement continu :  git push main ──▶ webhook GitHub (HMAC) ──▶ dispatch.sh
-                       ──▶ git reset --hard origin/main ──▶ ./deploy.sh (build + up + healthcheck)
+Continuous deployment:  git push main ──▶ GitHub webhook (HMAC) ──▶ dispatch.sh
+                        ──▶ git reset --hard origin/main ──▶ ./deploy.sh (build + up + healthcheck)
 ```
 
-Trois briques :
+Three building blocks:
 
-| Brique | Rôle | Où |
+| Block | Role | Where |
 |---|---|---|
-| **Reverse-proxy** | TLS auto, routage `*.domaine`, en-têtes de sécurité | [`Caddyfile`](Caddyfile), [`docker-compose.yml`](docker-compose.yml) |
-| **Déploiement continu** | `push main` → build + redéploiement de l'app concernée | [`deploy/`](deploy/) ([README](deploy/README.md)) |
-| **Exploitation** | sauvegardes chiffrées + monitoring + diagnostic IA | [`ops/`](ops/) ([README](ops/README.md)) |
+| **Reverse proxy** | Auto TLS, `*.domain` routing, security headers | [`Caddyfile`](Caddyfile), [`docker-compose.yml`](docker-compose.yml) |
+| **Continuous deployment** | `push main` → build + redeploy of the affected app | [`deploy/`](deploy/) ([README](deploy/README.md)) |
+| **Operations** | Encrypted backups + monitoring + AI diagnosis | [`ops/`](ops/) ([README](ops/README.md)) |
 
 ---
 
-## Le déploiement en une phrase
+## Deployment in one sentence
 
-**Tu pushes sur `main`, l'app se redéploie toute seule sur le VPS** — quelle que soit
-sa techno. Chaque projet embarque un script `deploy.sh` (contrat identique partout :
-build → migrations éventuelles → `up` → **healthcheck HTTP bloquant**) ; le webhook
-central le déclenche après avoir aligné le code sur `origin/main`.
+**You push to `main`, and the app redeploys itself on the VPS** — whatever its
+tech stack. Each project ships a `deploy.sh` script (same contract everywhere:
+build → optional migrations → `up` → **blocking HTTP healthcheck**); the central
+webhook triggers it after aligning the code with `origin/main`.
 
-Détails complets et procédure d'onboarding d'un nouveau projet : **[`deploy/README.md`](deploy/README.md)**.
-
----
-
-## Modèle de sécurité
-
-- **TLS** automatique (Let's Encrypt) + en-têtes de sécurité uniformes (HSTS, nosniff,
-  anti-clickjacking…) via le snippet `(security_headers)` du `Caddyfile`.
-- **Bases de données** : jamais exposées publiquement (réseaux docker `internal` privés
-  par app).
-- **Webhook signé** : seul un `POST` avec une signature HMAC-SHA256 valide (`WEBHOOK_SECRET`)
-  **et** un `ref == refs/heads/main` déclenche un déploiement.
-- **Clés de déploiement en lecture seule, une par repo** : le webhook ne fait que `pull`,
-  il porte donc des *deploy keys* GitHub **read-only** dédiées (dans `deploy/keys/`, montées
-  sous `/keys`). Une clé compromise ne donne que la **lecture d'un seul repo** — pas d'écriture,
-  pas d'accès aux autres.
-- ⚠️ Le conteneur `webhook` monte le **socket Docker** : il a donc des droits **root** sur
-  l'hôte (nécessaire pour piloter les stacks). C'est le composant le plus sensible — protégé
-  par le secret HMAC. Durcissement restant possible : *socket-proxy* Docker, allowlist des IP
-  GitHub au niveau Caddy.
-- **Secrets hors-git** : `.env` (secret HMAC, email) et les clés privées ne sont **jamais**
-  committés (`.gitignore`). Les `.env` de prod sont en `chmod 600`.
+Full details and the onboarding procedure for a new project:
+**[`deploy/README.md`](deploy/README.md)**.
 
 ---
 
-## Démarrage rapide (setup VPS)
+## Security model
+
+- **TLS** automated (Let's Encrypt) + uniform security headers (HSTS, nosniff,
+  anti-clickjacking…) via the `(security_headers)` snippet in the `Caddyfile`.
+- **Databases** are never publicly exposed (private per-app `internal` Docker
+  networks).
+- **Signed webhook**: only a `POST` with a valid HMAC-SHA256 signature
+  (`WEBHOOK_SECRET`) **and** `ref == refs/heads/main` triggers a deploy.
+- **Read-only deploy keys, one per repo**: the webhook only ever `pull`s, so it
+  carries dedicated **read-only** GitHub deploy keys (in `deploy/keys/`, mounted
+  at `/keys`). A compromised key grants only **read access to a single repo** —
+  no write, no access to the others.
+- ⚠️ The `webhook` container mounts the **Docker socket**, so it effectively has
+  **root** on the host (needed to drive the stacks). It's the most sensitive
+  component — protected by the HMAC secret. Planned hardening: Docker
+  *socket-proxy*, GitHub IP allowlist at the Caddy level.
+- **Secrets out of git**: `.env` (HMAC secret, email) and the private keys are
+  **never** committed (`.gitignore`). Production `.env` files are `chmod 600`.
+
+---
+
+## Quick start (VPS setup)
 
 ```bash
-# 1. Réseau partagé (une seule fois)
+# 1. Shared network (once)
 docker network create web
 
-# 2. Cloner et configurer
+# 2. Clone and configure
 git clone git@github.com:<owner>/push-to-deploy.git ~/push-to-deploy
 cd ~/push-to-deploy
-cp .env.exemple .env          # éditer : LETSENCRYPT_EMAIL, WEBHOOK_SECRET
+cp .env.example .env          # set: LETSENCRYPT_EMAIL, WEBHOOK_SECRET
 
-# 3. Démarrer le proxy + le listener de déploiement
+# 3. Start the proxy + the deploy listener
 docker compose up -d
 
-# 4. (optionnel) installer la tooling d'exploitation -> voir ops/README.md
+# 4. (optional) install the operations tooling -> see ops/README.md
 ```
 
-Pour brancher un projet sur le déploiement auto : **[`deploy/README.md`](deploy/README.md)**.
+To wire a project into auto-deploy: **[`deploy/README.md`](deploy/README.md)**.
 
 ---
 
-## Structure du dépôt
+## Repository structure
 
 ```
 push-to-deploy/
-├── Caddyfile              # routage + TLS + en-têtes de sécurité (un bloc par site)
-├── docker-compose.yml     # services caddy + webhook, réseau « web », volumes
-├── .env(.exemple)         # LETSENCRYPT_EMAIL, WEBHOOK_SECRET (hors-git)
-├── deploy/                # déploiement continu
-│   ├── dispatch.sh        #   résout repo→dossier, git reset --hard, lance ./deploy.sh
-│   ├── projects.conf      #   table de routage  owner/repo = /srv/<dossier>
-│   ├── hooks.json         #   règles du listener (HMAC + ref==main)
-│   ├── deploy.sh.template #   contrat de déploiement de référence (à copier par projet)
-│   ├── keys/              #   deploy keys read-only, une par repo (hors-git)
-│   └── webhook/           #   image du listener (adnanh/webhook + docker CLI + git)
-└── ops/                   # exploitation (cron) — voir ops/README.md
-    ├── backup.sh          #   sauvegarde chiffrée restic (bases + données + tooling)
-    ├── uptime-check.sh    #   monitoring HTTP -> issue GitHub (diagnostic IA) sur incident
-    ├── deploy-watch.sh    #   diagnostic d'échec de déploiement -> issue GitHub
-    └── lib.sh             #   helpers partagés
+├── Caddyfile              # routing + TLS + security headers (one block per site)
+├── docker-compose.yml     # caddy + webhook services, « web » network, volumes
+├── .env(.example)         # LETSENCRYPT_EMAIL, WEBHOOK_SECRET (out of git)
+├── deploy/                # continuous deployment
+│   ├── dispatch.sh        #   resolves repo→folder, git reset --hard, runs ./deploy.sh
+│   ├── projects.conf      #   routing table  owner/repo = /srv/<folder>
+│   ├── hooks.json         #   listener rules (HMAC + ref==main)
+│   ├── deploy.sh.template #   reference deploy contract (copied per project)
+│   ├── keys/              #   read-only deploy keys, one per repo (out of git)
+│   └── webhook/           #   listener image (adnanh/webhook + docker CLI + git)
+└── ops/                   # operations (cron) — see ops/README.md
+    ├── backup.sh          #   encrypted restic backup (databases + data + tooling)
+    ├── uptime-check.sh    #   HTTP monitoring -> GitHub issue (AI diagnosis) on incident
+    ├── deploy-watch.sh    #   deploy-failure diagnosis -> GitHub issue
+    └── lib.sh             #   shared helpers
 ```
 
 ---
 
 ## Stack & versions
 
-| Composant | Version | Source |
+| Component | Version | Source |
 |---|---|---|
-| Caddy | `2-alpine` | image officielle |
+| Caddy | `2-alpine` | official image |
 | adnanh/webhook | `2.8.2` | [`deploy/webhook/Dockerfile`](deploy/webhook/Dockerfile) |
-| Docker Compose (plugin du listener) | `v2.29.7` | idem |
-| Image de base du listener | `docker:27-cli` | idem |
-| Outils ops (`restic` / `gh` / `claude`) | `0.19.0` / `2.95.0` / `2.1.185` | [`ops/README.md`](ops/README.md) |
+| Docker Compose (listener plugin) | `v2.29.7` | same |
+| Listener base image | `docker:27-cli` | same |
+| Ops tools (`restic` / `gh` / `claude`) | `0.19.0` / `2.95.0` / `2.1.185` | [`ops/README.md`](ops/README.md) |
 
 ---
 
-## Bon à savoir (pièges connus)
+## Good to know (known gotchas)
 
-- **Le `Caddyfile` est monté en *fichier unique*** dans le conteneur. Toute modification
-  nécessite un `docker restart proxy_caddy` pour être prise en compte (un `reload` seul ne
-  suffit pas : l'édition crée un nouvel inode que le bind-mount ne suit pas).
-- **`projects.conf`** est insensible à la casse (`Labault/Hush` == `Labault/hush`).
-- Le déploiement fait `git reset --hard origin/main` : tout changement local non poussé
-  est écrasé. Les `deploy.sh` doivent donc être **committés** dans chaque projet.
+- **The `Caddyfile` is mounted as a *single file*** in the container. Any change
+  needs a `docker restart proxy_caddy` to take effect (a `reload` alone isn't
+  enough: editing creates a new inode the bind-mount doesn't follow).
+- **`projects.conf`** is case-insensitive (`Labault/Hush` == `Labault/hush`).
+- The deploy runs `git reset --hard origin/main`: any unpushed local change is
+  overwritten. So each project's `deploy.sh` must be **committed**.
 
 ---
 
-## Aller plus loin
+## Going further
 
-`dispatch.sh` est volontairement **déterministe** (rails). Le jugement (diagnostic d'échec,
-revue de risque, audit) est délégué à des **agents en lecture seule** qui n'exécutent rien
-et ouvrent des issues — voir [`ops/README.md`](ops/README.md). Roadmap de durcissement :
-socket-proxy Docker, sauvegarde distante (B2/S3),
-limites de ressources persistées, IaC.
+`dispatch.sh` is deliberately **deterministic** (rails). Judgment (failure
+diagnosis, risk review, audit) is delegated to **read-only agents** that execute
+nothing and open issues — see [`ops/README.md`](ops/README.md). Hardening
+roadmap: Docker socket-proxy, remote backups (B2/S3), persisted resource limits,
+IaC.
+
+---
+
+## License
+
+See [LICENSE](LICENSE).
+
