@@ -4,7 +4,7 @@
 # déploiement réussit ensuite ("Déploiement terminé ✓"), ferme l'issue.
 set -uo pipefail
 . "$(dirname "$0")/lib.sh"
-LOGDIR="$HOME/proxy-global/deploy/logs"
+LOGDIR="$(dirname "$0")/../deploy/logs"
 exec >>"$HOME/ops/deploy-watch.log" 2>&1
 
 echo "===== $(date '+%F %T') deploy-watch ====="

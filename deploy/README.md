@@ -22,7 +22,7 @@ Trois piliers :
 1. **Une seule clé deployer** (compte machine GitHub) qui pull tous les repos.
 2. **Un contrat `deploy.sh` identique** dans chaque projet (interface uniforme,
    implémentation libre).
-3. **Un listener webhook unique** dans `proxy-global`, exposé sur
+3. **Un listener webhook unique** dans `push-to-deploy`, exposé sur
    `deploy.labault.dev`.
 
 ---
@@ -56,7 +56,7 @@ gh repo deploy-key add deploy/keys/$NAME.key.pub -R "$REPO" --title vps-webhook-
 ### b. Variables d'environnement
 
 ```bash
-cd ~/proxy-global
+cd ~/push-to-deploy
 cp .env.exemple .env   # si pas déjà fait
 # Édite .env :
 #   LETSENCRYPT_EMAIL=<ton email>
@@ -91,13 +91,13 @@ Pour chaque projet à passer en déploiement auto :
    Puis génère sa **deploy key read-only** (cf. §1.a) :
    ```bash
    N=$(basename "<repo>" | tr 'A-Z' 'a-z')
-   ssh-keygen -t ed25519 -N "" -C "vps-webhook-ro-$N" -f ~/proxy-global/deploy/keys/$N.key
-   gh repo deploy-key add ~/proxy-global/deploy/keys/$N.key.pub -R "<owner>/<repo>" --title vps-webhook-ro
+   ssh-keygen -t ed25519 -N "" -C "vps-webhook-ro-$N" -f ~/push-to-deploy/deploy/keys/$N.key
+   gh repo deploy-key add ~/push-to-deploy/deploy/keys/$N.key.pub -R "<owner>/<repo>" --title vps-webhook-ro
    ```
 
 2. **Ajouter le contrat de déploiement** au repo :
    ```bash
-   cp ~/proxy-global/deploy/deploy.sh.template /srv/<repo>/deploy.sh
+   cp ~/push-to-deploy/deploy/deploy.sh.template /srv/<repo>/deploy.sh
    # adapte le bloc "ÉTAPES SPÉCIFIQUES PROJET" si besoin (migrations…)
    # commit + push : deploy.sh est versionné avec le projet
    ```
@@ -111,7 +111,7 @@ Pour chaque projet à passer en déploiement auto :
    HEALTHCHECK_URL=https://<projet>.labault.dev/
    ```
 
-3. **Enregistrer la route** dans `proxy-global/deploy/projects.conf` :
+3. **Enregistrer la route** dans `push-to-deploy/deploy/projects.conf` :
    ```
    <owner>/<repo> = /srv/<repo>
    ```
@@ -128,7 +128,7 @@ Pour chaque projet à passer en déploiement auto :
    puis sur le VPS :
    ```bash
    docker compose logs -f webhook            # réception + déclenchement
-   tail -f ~/proxy-global/deploy/logs/<repo>.log   # déroulé du build/up
+   tail -f ~/push-to-deploy/deploy/logs/<repo>.log   # déroulé du build/up
    ```
 
 ---

@@ -6,7 +6,7 @@
 export HOME="${HOME:-/home/thibault}"
 export PATH="$HOME/.local/bin:$PATH"
 
-OPS_REPO="Labault/proxy-global"          # repo central des alertes ops
+OPS_REPO="Labault/push-to-deploy"            # repo central des alertes ops
 STATE_DIR="$HOME/ops/state"
 mkdir -p "$STATE_DIR"
 

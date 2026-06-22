@@ -1,4 +1,4 @@
-# proxy-global
+# push-to-deploy
 
 Infrastructure « tout-en-un » qui sert et déploie l'ensemble des applications d'un
 même VPS : **reverse-proxy TLS partagé (Caddy)** + **déploiement continu par webhook**
@@ -84,8 +84,8 @@ Détails complets et procédure d'onboarding d'un nouveau projet : **[`deploy/RE
 docker network create web
 
 # 2. Cloner et configurer
-git clone git@github.com:<owner>/proxy-global.git ~/proxy-global
-cd ~/proxy-global
+git clone git@github.com:<owner>/push-to-deploy.git ~/push-to-deploy
+cd ~/push-to-deploy
 cp .env.exemple .env          # éditer : LETSENCRYPT_EMAIL, WEBHOOK_SECRET, DEPLOYER_SSH_KEY
 
 # 3. Démarrer le proxy + le listener de déploiement
@@ -101,7 +101,7 @@ Pour brancher un projet sur le déploiement auto : **[`deploy/README.md`](deploy
 ## Structure du dépôt
 
 ```
-proxy-global/
+push-to-deploy/
 ├── Caddyfile              # routage + TLS + en-têtes de sécurité (un bloc par site)
 ├── docker-compose.yml     # services caddy + webhook, réseau « web », volumes
 ├── .env(.exemple)         # LETSENCRYPT_EMAIL, WEBHOOK_SECRET (hors-git)

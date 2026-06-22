@@ -22,9 +22,9 @@ l'IA, l'issue s'ouvre quand même (mention « diagnostic indisponible ») : **d�
 ## Crontab type
 
 ```cron
-30 3 * * *   /home/<user>/proxy-global/ops/backup.sh
-*/5 * * * *  /home/<user>/proxy-global/ops/uptime-check.sh
-*/3 * * * *  /home/<user>/proxy-global/ops/deploy-watch.sh
+30 3 * * *   /home/<user>/push-to-deploy/ops/backup.sh
+*/5 * * * *  /home/<user>/push-to-deploy/ops/uptime-check.sh
+*/3 * * * *  /home/<user>/push-to-deploy/ops/deploy-watch.sh
 ```
 
 ## Prérequis (binaires dans `~/.local/bin`, sans sudo)
@@ -43,7 +43,7 @@ dans le dépôt :
 ├── .restic-pass     # mot de passe du dépôt restic (chmod 600) — à sauvegarder HORS serveur !
 ├── state/           # état des moniteurs (UP/DOWN, offsets de logs)
 ├── *.log            # journaux d'exécution
-└── (les *.sh vivent dans proxy-global/ops/, versionnés)
+└── (les *.sh vivent dans push-to-deploy/ops/, versionnés)
 ```
 
 ## Restauration d'une sauvegarde
