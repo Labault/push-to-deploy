@@ -23,7 +23,7 @@ DIR=""
 if [ -f "$CONF" ]; then
   DIR="$(grep -vE '^\s*#' "$CONF" | awk -F'=' -v r="$REPO" '
     { gsub(/[[:space:]]/, "", $1); gsub(/[[:space:]]/, "", $2) }
-    $1 == r { print $2; exit }')"
+    tolower($1) == tolower(r) { print $2; exit }')"
 fi
 [ -z "$DIR" ] && DIR="/srv/$(basename "$REPO")"
 
