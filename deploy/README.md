@@ -29,28 +29,22 @@ Trois piliers :
 
 ## 1. Setup initial (une seule fois)
 
-### a. Compte machine GitHub + clé unique
+### a. Clé SSH de déploiement
 
-GitHub interdit de réutiliser une *deploy key* sur plusieurs repos — d'où
-l'ancien problème d'une clé par projet. La solution : **un compte machine**
-(ex. `labault-deploy`) avec **une seule** clé, ajouté en lecture sur tous
-les repos.
+Le webhook fait un `git pull` : il lui faut une **clé SSH sans passphrase** ayant
+**accès en lecture** aux repos. Son chemin absolu est pointé par `DEPLOYER_SSH_KEY`
+dans `.env`, et la clé est montée en lecture seule dans le conteneur.
 
 ```bash
-# Sur le VPS, en tant qu'utilisateur deploy :
-sudo -iu deploy
-ssh-keygen -t ed25519 -C "labault-deploy" -f ~/.ssh/id_ed25519 -N ""
-cat ~/.ssh/id_ed25519.pub   # → à copier
+# Générer une clé dédiée au déploiement (sans passphrase, pour usage non-interactif)
+ssh-keygen -t ed25519 -C "deployer" -f ~/.ssh/deployer -N ""
+cat ~/.ssh/deployer.pub   # → à autoriser sur GitHub
 ```
 
-- Crée (ou réutilise) un compte GitHub dédié `labault-deploy`.
-- Profil GitHub du bot → **Settings → SSH and GPG keys → New SSH key** → colle
-  la clé publique.
-- Donne au bot l'accès **read** à chaque repo (invite-le comme collaborateur,
-  ou mets tes repos dans une organisation et ajoute-le à une équipe *read*).
-
-> Le chemin de la clé privée doit correspondre à `DEPLOYER_SSH_KEY` dans `.env`
-> (par défaut `/home/deploy/.ssh/id_ed25519`).
+> **Recommandé (durcissement)** : plutôt qu'une clé personnelle (qui a un accès en
+> écriture à tous tes repos), utilise un **compte machine GitHub dédié** avec des
+> **deploy keys en lecture seule** — le webhook n'a besoin que de *lire*. Cela réduit
+> fortement le rayon de souffle en cas de compromission du listener.
 
 ### b. Variables d'environnement
 
@@ -58,8 +52,9 @@ cat ~/.ssh/id_ed25519.pub   # → à copier
 cd ~/proxy-global
 cp .env.exemple .env   # si pas déjà fait
 # Édite .env :
+#   LETSENCRYPT_EMAIL=<ton email>
 #   WEBHOOK_SECRET=<openssl rand -hex 32>
-#   DEPLOYER_SSH_KEY=/home/deploy/.ssh/id_ed25519
+#   DEPLOYER_SSH_KEY=<chemin absolu de la clé privée, ex. /home/<user>/.ssh/deployer>
 ```
 
 ### c. Démarrer le listener
@@ -80,11 +75,12 @@ sous-domaines). Caddy obtiendra le certificat tout seul au premier accès.
 
 Pour chaque projet à passer en déploiement auto :
 
-1. **Cloner sur le VPS avec la clé deployer** (si pas déjà fait) :
+1. **Cloner sur le VPS** dans `/srv/<repo>` (si pas déjà fait) :
    ```bash
-   sudo -iu deploy
    git clone git@github.com:<owner>/<repo>.git /srv/<repo>
    ```
+   > À chaque déploiement, `dispatch.sh` fait un `git reset --hard origin/main` puis
+   > `chown` du clone vers l'utilisateur applicatif (propriété stable, pas de mélange root).
 
 2. **Ajouter le contrat de déploiement** au repo :
    ```bash
@@ -106,7 +102,8 @@ Pour chaque projet à passer en déploiement auto :
    ```
    <owner>/<repo> = /srv/<repo>
    ```
-   (sinon fallback automatique sur `/srv/<repo>`)
+   (sinon fallback automatique sur `/srv/<repo>`). Le matching est **insensible à
+   la casse** : `Owner/MonRepo` correspond à `owner/monrepo`.
 
 4. **Créer le webhook GitHub** (repo → Settings → Webhooks → Add webhook) :
    - **Payload URL** : `https://deploy.labault.dev/hooks/deploy`
