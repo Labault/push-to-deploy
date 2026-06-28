@@ -107,6 +107,7 @@ devspeak.labault.dev {
 # ── lolv.labault.dev ────────────────────────────────────────────
 lolv.labault.dev {
     import security_headers
+    encode zstd gzip
     reverse_proxy lolv_wp_prod:80
 }
 
