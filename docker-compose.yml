@@ -1,3 +1,11 @@
+# Nom de projet Compose FIGÉ (indépendant du dossier de checkout).
+# Les volumes sont préfixés par le nom du projet : caddy_data = compte + certs
+# Let's Encrypt. Sans ce pin, déployer depuis un dossier au nom différent
+# (~/push-to-deploy vs ~/proxy-global) crée un volume VIDE et re-émet tous les
+# certs (risque de rate-limit LE). On le fige sur le projet historique pour
+# réutiliser le volume `proxy-global_caddy_data` existant.
+name: proxy-global
+
 services:
   caddy:
     image: caddy:2-alpine
