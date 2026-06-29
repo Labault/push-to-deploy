@@ -141,8 +141,10 @@ push-to-deploy/
 ## Good to know (known gotchas)
 
 - **The `Caddyfile` is mounted as a *single file*** in the container. Any change
-  needs a `docker restart proxy_caddy` to take effect (a `reload` alone isn't
-  enough: editing creates a new inode the bind-mount doesn't follow).
+  is deployed with `./proxy-deploy.sh` (validates the new file, then **recreates**
+  the caddy container). A `reload` — or `docker compose up -d` alone — isn't
+  enough: editing creates a new inode the single-file bind-mount doesn't follow,
+  so only a recreate (`--force-recreate`) re-binds the new file.
 - **`projects.conf`** is case-insensitive (`Labault/Hush` == `Labault/hush`).
 - The deploy runs `git reset --hard origin/main`: any unpushed local change is
   overwritten. So each project's `deploy.sh` must be **committed**.

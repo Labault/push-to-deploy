@@ -1,3 +1,18 @@
+# ─────────────────────────────────────────────────────────────────────────
+# Reverse proxy GLOBAL — il sert TOUTES les apps du VPS. Un Caddyfile cassé
+# ici tombe TOUS les sites d'un coup. On le modifie par git, jamais à la main
+# sur le serveur.
+#
+# Déployer un changement :  éditer → commit → push → sur le VPS : ./proxy-deploy.sh
+#   (valide le nouveau Caddyfile, PUIS recrée le conteneur caddy)
+#
+# Pourquoi recréer et pas reload : le Caddyfile est un bind-mount single-file.
+# L'éditer crée un nouvel inode que le conteneur en cours ne suit pas — donc
+# `caddy reload` (et même `docker compose up -d` seul) continuent de servir
+# l'ANCIENNE config. Seul `docker compose up -d --force-recreate caddy` (ce que
+# fait proxy-deploy.sh) re-bind le nouveau fichier. Si tu édites quand même sur
+# le serveur, lance cette commande — jamais un simple reload.
+# ─────────────────────────────────────────────────────────────────────────
 {
 	# Email pour Let's Encrypt (renouvellement automatique)
 	email {$LETSENCRYPT_EMAIL}
@@ -26,93 +41,87 @@ redflagbingo.fun {
 	import security_headers
 	encode zstd gzip
 	reverse_proxy rfb_app:80 {
-		# Préserve les infos d'origine pour Symfony/FrankenPHP
+		# X-Real-IP n'est pas posé par Caddy par défaut → override délibéré.
+		# (X-Forwarded-For/Proto/Host sont ajoutés automatiquement par Caddy.)
 		header_up X-Real-IP {remote_host}
-		header_up X-Forwarded-Proto {scheme}
-		header_up Host {host}
 	}
 }
 
 # ── humelis.labault.dev ────────────────────────────────────────────
 humelis.labault.dev {
-        import security_headers
-        encode zstd gzip
-        reverse_proxy humelis_app:80 {
-                header_up X-Real-IP {remote_host}
-                header_up X-Forwarded-Proto {scheme}
-                header_up Host {host}
-        }
+	import security_headers
+	encode zstd gzip
+	reverse_proxy humelis_app:80 {
+		header_up X-Real-IP {remote_host}
+	}
 }
 
 # ── labault.dev ────────────────────────────────────────────
 labault.dev {
-    import security_headers
-    root * /srv/portfolio
-    file_server
+	import security_headers
+	root * /srv/portfolio
+	file_server
 
-    # Compression gzip/brotli (perf sur le HTML lourd)
-    encode gzip
+	# Compression gzip/brotli (perf sur le HTML lourd)
+	encode gzip
 
-    # Cache navigateur (optionnel, utile pour les fonts Google)
-    header /index.html Cache-Control "no-cache, must-revalidate"
+	# Cache navigateur (optionnel, utile pour les fonts Google)
+	header /index.html Cache-Control "no-cache, must-revalidate"
 }
 
 # Redirection www → non-www
 www.labault.dev {
-    redir https://labault.dev{uri} permanent
+	redir https://labault.dev{uri} permanent
 }
 
 # ── hush.labault.dev ────────────────────────────────────────────
 hush.labault.dev {
-    encode gzip zstd
+	encode gzip zstd
 
-    header {
-        Strict-Transport-Security "max-age=31536000; includeSubDomains"
-        X-Content-Type-Options "nosniff"
-        X-Frame-Options "DENY"
-        Referrer-Policy "strict-origin-when-cross-origin"
-        Permissions-Policy "geolocation=(), camera=(), microphone=()"
-        -Server
-    }
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "geolocation=(), camera=(), microphone=()"
+		-Server
+	}
 
-    reverse_proxy hush-web-prod:80 {
-        header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Proto {scheme}
-        header_up Host {host}
-    }
+	reverse_proxy hush-web-prod:80 {
+		header_up X-Real-IP {remote_host}
+	}
 
-    log {
-        output file /var/log/caddy/hush.log {
-            roll_size 10mb
-            roll_keep 5
-        }
-        format console
-    }
+	log {
+		output file /var/log/caddy/hush.log {
+			roll_size 10mb
+			roll_keep 5
+		}
+		format console
+	}
 }
 
 # ── devspeak.labault.dev ────────────────────────────────────────────
 devspeak.labault.dev {
-    reverse_proxy devspeak:4321
-    encode gzip zstd
-    header {
-        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-        X-Frame-Options "SAMEORIGIN"
-        X-Content-Type-Options "nosniff"
-        Referrer-Policy "strict-origin-when-cross-origin"
-        -Server
-    }
+	reverse_proxy devspeak:4321
+	encode gzip zstd
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Frame-Options "SAMEORIGIN"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
 }
 
 # ── lolv.labault.dev ────────────────────────────────────────────
 lolv.labault.dev {
-    import security_headers
-    encode zstd gzip
-    reverse_proxy lolv_wp_prod:80
+	import security_headers
+	encode zstd gzip
+	reverse_proxy lolv_wp_prod:80
 }
 
 # ── deploy.labault.dev (listener de déploiement) ─────────────────────
 deploy.labault.dev {
-    import security_headers
-    reverse_proxy webhook:9000
+	import security_headers
+	reverse_proxy webhook:9000
 }
