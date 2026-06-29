@@ -120,6 +120,16 @@ lolv.labault.dev {
 	reverse_proxy lolv_wp_prod:80
 }
 
+# ── tibec.labault.dev ────────────────────────────────────────────
+tibec.labault.dev {
+	import security_headers
+	reverse_proxy duck_app:80 {
+		# X-Real-IP n'est pas posé par Caddy par défaut → override délibéré.
+		# (X-Forwarded-For/Proto/Host sont ajoutés automatiquement par Caddy.)
+		header_up X-Real-IP {remote_host}
+	}
+}
+
 # ── deploy.labault.dev (listener de déploiement) ─────────────────────
 deploy.labault.dev {
 	import security_headers
