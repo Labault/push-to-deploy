@@ -56,14 +56,11 @@ $ctx")"
 ### 🤖 Diagnostic (IA, lecture seule)
 ${diag:-_diagnostic indisponible (timeout IA)_}
 
-<details><summary>Contexte brut</summary>
-
-\`\`\`
-$ctx
-\`\`\`
-</details>
+Conteneur \`$cont\` · HTTP $code. Logs bruts non publiés : \`docker logs $cont\` sur le serveur.
 
 > Issue auto-générée par le moniteur uptime — se fermera seule au rétablissement."
+      # Résiduel assumé : \$diag (sortie IA) peut citer une ligne de log ; c'est borné et
+      # acceptable, la destination est privée. On ne publie aucun dump brut complet.
     fi
     echo DOWN > "$sf"
   fi

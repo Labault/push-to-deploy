@@ -18,7 +18,7 @@ DOMAINS ?= redflagbingo.fun humelis.labault.dev labault.dev www.labault.dev \
 .DEFAULT_GOAL := help
 .PHONY: help deploy validate fmt fmt-check check up down recreate \
         caddy-recreate webhook-build ps logs caddy-logs webhook-logs \
-        deploy-logs smoke
+        deploy-logs smoke ops-guard
 
 help: ## Affiche cette aide
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -83,3 +83,16 @@ smoke: ## curl -I sur tous les domaines servis (code HTTP attendu = 2xx/3xx)
 	  code=$$(curl -sS -o /dev/null -w '%{http_code}' -I -m 12 "https://$$d/" 2>/dev/null || echo ERR); \
 	  printf '  %-26s %s\n' "$$d" "$$code"; \
 	done
+
+ops-guard: ## Garde-fou anti-fuite ops : repo d'alertes privé + zéro log brut dans les corps d'issue
+	@grep -Fq 'OPS_REPO="$${OPS_REPO:-Labault/ops-incidents}"' ops/lib.sh \
+	  || { echo "ops-guard ✗ : OPS_REPO doit défauter sur Labault/ops-incidents (privé)"; exit 1; }
+	@if grep -E '^OPS_REPO=' ops/lib.sh | grep -q 'push-to-deploy'; then \
+	  echo "ops-guard ✗ : OPS_REPO ne doit jamais défauter sur push-to-deploy (public)"; exit 1; fi
+	@for s in uptime-check deploy-watch; do \
+	  if awk '/issue_open_once /{f=1} f; /Issue auto-générée/{f=0}' "ops/$$s.sh" \
+	       | grep -Eq '[$$]ctx|tail -c|--tail'; then \
+	    echo "ops-guard ✗ : $$s.sh embarque un log brut dans le corps d'issue"; exit 1; \
+	  fi; \
+	done
+	@echo "ops-guard OK ✓"

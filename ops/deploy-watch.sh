@@ -26,6 +26,9 @@ for f in "$LOGDIR"/*.log; do
   # Nouvel échec -> diagnostic + issue.
   printf '%s' "$newpart" | grep -q "ÉCHEC" || continue
   echo "  $base : ÉCHEC détecté"
+  # $ctx alimente UNIQUEMENT le diagnostic IA ci-dessous ; il n'est jamais collé dans le
+  # corps de l'issue (pas de dump brut publié). Résiduel assumé : $diag peut citer une ligne
+  # de ce log, c'est borné et acceptable, la destination est privée.
   ctx="$(tail -c 6000 "$f")"
   diag="$(claude_diagnose "Tu es expert DevOps (Docker, Symfony/FrankenPHP, Astro, Node, WordPress). Le déploiement automatique du projet '$base' a ÉCHOUÉ. À partir UNIQUEMENT du log ci-dessous, réponds en français : 1) cause racine, 2) correctif concret (fichier concerné + changement à faire). Bref et actionnable.
 
@@ -36,12 +39,7 @@ $ctx")"
 ### 🤖 Diagnostic (IA, lecture seule)
 ${diag:-_diagnostic indisponible (timeout IA)_}
 
-<details><summary>Extrait du log de déploiement</summary>
-
-\`\`\`
-$ctx
-\`\`\`
-</details>
+Projet \`$base\`. Log de déploiement complet non publié : \`deploy/logs/$base.log\` sur le serveur.
 
 > Issue auto-générée à la détection de \`ÉCHEC ✗\`. Corrige, pousse sur main : le déploiement repassera et fermera l'issue."
 done
