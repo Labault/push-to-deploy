@@ -6,7 +6,9 @@
 export HOME="${HOME:-/home/thibault}"
 export PATH="$HOME/.local/bin:$PATH"
 
-OPS_REPO="Labault/push-to-deploy"            # repo central des alertes ops
+# Défaut PRIVÉ = fail-closed : un tiers qui clone l'outil n'a pas les droits sur ce
+# repo, donc `gh issue create` échoue au lieu de fuiter une alerte sur un repo public.
+OPS_REPO="${OPS_REPO:-Labault/ops-incidents}"   # repo PRIVÉ des alertes (jamais public). Override via env.
 STATE_DIR="$HOME/ops/state"
 mkdir -p "$STATE_DIR"
 

@@ -19,6 +19,13 @@ Tooling d'exploitation du VPS, piloté par `cron`. Trois briques, un principe di
 L'IA ne tourne **que sur incident** (rare) → coût négligeable. En cas d'indisponibilité de
 l'IA, l'issue s'ouvre quand même (mention « diagnostic indisponible ») : **dégradation gracieuse**.
 
+> ⚠️ **`OPS_REPO` DOIT pointer un repo privé.** Le défaut est `Labault/ops-incidents` (privé)
+> précisément pour que l'outil ne publie **jamais** une alerte sur un repo public. Override
+> possible via la variable d'environnement `OPS_REPO`, mais la cible reste **toujours privée** :
+> les issues portent host, conteneur et code HTTP, et un diagnostic IA qui peut citer une ligne
+> de log. C'est aussi du fail-closed — un tiers qui clone l'outil n'a pas les droits sur ce repo,
+> donc rien ne fuite chez autrui.
+
 ## Crontab type
 
 ```cron
@@ -32,7 +39,8 @@ l'IA, l'issue s'ouvre quand même (mention « diagnostic indisponible ») : **d�
 _Versions testées entre parenthèses._
 
 - [`restic`](https://restic.net) (`0.19.0`) — sauvegardes chiffrées dédupliquées.
-- [`gh`](https://cli.github.com) (`2.95.0`) authentifié (scope `repo`) — ouverture des issues.
+- [`gh`](https://cli.github.com) (`2.95.0`) authentifié par un **PAT fine-grained** limité au seul
+  repo `ops-incidents`, permission **Issues (read and write)** — ouverture des issues.
 - [`claude`](https://docs.claude.com/claude-code) (`2.1.185`) authentifié — diagnostic IA headless (`claude -p`).
 
 ## États & secrets (hors-git)
