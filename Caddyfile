@@ -130,6 +130,16 @@ tibec.labault.dev {
 	}
 }
 
+# ── stats.labault.dev ────────────────────────────────────────────
+stats.labault.dev {
+	encode zstd gzip
+	reverse_proxy umami:3000 {
+		health_uri /api/heartbeat
+		health_interval 10s
+		health_timeout 2s
+	}
+}
+
 # ── deploy.labault.dev (listener de déploiement) ─────────────────────
 deploy.labault.dev {
 	import security_headers
