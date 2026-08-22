@@ -146,8 +146,8 @@ deploy.labault.dev {
 	reverse_proxy webhook:9000
 }
 
-# ── app.tartory.fr, pro.tartory.fr ────────────────────────────────────
-app.tartory.fr, pro.tartory.fr {
+# ── app.tartory.com, pro.tartory.com ────────────────────────────────────
+app.tartory.com, pro.tartory.com {
 	import security_headers
 	encode zstd gzip
 	reverse_proxy tartory_web:80 {
