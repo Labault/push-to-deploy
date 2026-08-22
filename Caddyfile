@@ -147,10 +147,26 @@ deploy.labault.dev {
 }
 
 # ── app.tartory.com, pro.tartory.com ────────────────────────────────────
+# PAS d'import security_headers ici, volontairement : l'app envoie déjà sa propre
+# politique, plus stricte (CSP comprise). La directive `header` de Caddy REMPLACE,
+# donc importer le snippet écraserait camera=(self) par camera=() (scanner de
+# code-barres HS), same-origin par strict-origin-when-cross-origin, et DENY par
+# SAMEORIGIN. Pas de bloc `log` non plus : les liens de reset portent un token en
+# clair dans l'URL, que l'app filtre dans SES logs et que le proxy écrirait en
+# clair dans les siens. Voir docs/DEPLOY.md du repo Tartory.
 app.tartory.com, pro.tartory.com {
-	import security_headers
 	encode zstd gzip
 	reverse_proxy tartory_web:80 {
 		header_up X-Real-IP {remote_host}
 	}
+}
+
+# ── tartory.com (domaine nu) ────────────────────────────────────────────
+# Le nom résout vers le VPS (A + AAAA). Sans ce bloc, Caddy ne le connaît pas et
+# le visiteur se prend une erreur TLS, ce qui est pire qu'une page vide.
+# Sans le snippet non plus : son HSTS porte `preload` et `includeSubDomains`, ce que
+# Tartory refuse délibérément (l'inscription à la liste des navigateurs est presque
+# irréversible, et vaudrait alors pour app. et pro.). Une 301 n'a besoin de rien d'autre.
+tartory.com {
+	redir https://app.tartory.com{uri} permanent
 }
