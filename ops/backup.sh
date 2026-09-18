@@ -14,7 +14,7 @@ DUMP="$(mktemp -d)"
 trap 'rm -rf "$DUMP"' EXIT
 
 # --- PostgreSQL (dump logique complet par instance) ---
-for c in humelis_db rfb_db hush-postgres-prod; do
+for c in humelis_db rfb_db hush-postgres-prod whykipedia_db; do
   if docker ps --format '{{.Names}}' | grep -qx "$c"; then
     user="$(docker exec "$c" printenv POSTGRES_USER 2>/dev/null || echo postgres)"
     if docker exec "$c" pg_dumpall -U "$user" > "$DUMP/${c}.sql" 2>/dev/null; then

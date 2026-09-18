@@ -146,6 +146,20 @@ tibec.labault.dev {
 	}
 }
 
+# ── whykipedia.xyz ────────────────────────────────────────────────────
+whykipedia.xyz {
+	import security_headers
+	encode zstd gzip
+	reverse_proxy whykipedia_app:80 {
+		header_up X-Real-IP {remote_host}
+	}
+}
+
+# Redirection www → non-www
+www.whykipedia.xyz {
+	redir https://whykipedia.xyz{uri} permanent
+}
+
 # ── stats.labault.dev ────────────────────────────────────────────
 stats.labault.dev {
 	encode zstd gzip

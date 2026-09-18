@@ -14,6 +14,7 @@ hush|https://hush.labault.dev/|hush-web-prod
 redflagbingo|https://redflagbingo.fun/|rfb_app
 portfolio|https://labault.dev/|proxy_caddy
 lolv|https://lolv.labault.dev/|lolv_wp_prod
+whykipedia|https://whykipedia.xyz/api/health/ready|whykipedia_app
 "
 
 # 2 tentatives pour éviter les faux positifs transitoires.

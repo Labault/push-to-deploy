@@ -13,7 +13,8 @@ CADDY_ENV := $(if $(wildcard .env),--env-file .env,-e LETSENCRYPT_EMAIL=placehol
 # Domaines servis — liste de référence pour le smoke test post-déploiement.
 DOMAINS ?= redflagbingo.fun humelis.labault.dev labault.dev www.labault.dev \
            hush.labault.dev devspeak.labault.dev lolv.labault.dev \
-           shanna.labault.dev tibec.labault.dev deploy.labault.dev
+           shanna.labault.dev tibec.labault.dev deploy.labault.dev \
+           whykipedia.xyz www.whykipedia.xyz
 
 .DEFAULT_GOAL := help
 .PHONY: help deploy validate fmt fmt-check check up down recreate \
